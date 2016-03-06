@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Parking Finder</string>
+    <string name="search_btn">Search!</string>
+    <string name="curr_location">Your current location is:</string>
+    <string name="unknown_location">Unknown</string>
+</resources>
