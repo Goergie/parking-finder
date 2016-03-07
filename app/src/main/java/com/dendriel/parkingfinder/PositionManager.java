@@ -9,18 +9,9 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
-
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * Created by Vitor Rozsa on 03/03/2016.
@@ -35,14 +26,22 @@ public class PositionManager implements LocationListener
     boolean providerAvailable;
 
     LocationManager lm;
-    IUpdateLocation updateLocationCallback;
+    HTTPRequestManager httpRequestMan;
+    IUpdateLocation updateLocationCb;
 
-    public PositionManager(Context context, IUpdateLocation _updateLocationCallback)
+    String Street;
+    String District;
+    String City;
+    String State;
+    String Country;
+
+    public PositionManager(Context context, IUpdateLocation _updateLocationCb)
     {
         ctx = context;
         currPosition = null;
         providerAvailable = false;
-        updateLocationCallback = _updateLocationCallback;
+        updateLocationCb = _updateLocationCb;
+        httpRequestMan = HTTPRequestManager.getInstance(ctx);
 
         lm = (LocationManager) ctx.getSystemService(ctx.LOCATION_SERVICE);
 
@@ -83,48 +82,53 @@ public class PositionManager implements LocationListener
     @Override
     public void onLocationChanged(Location arg0)
     {
+        // Store the current Lat/Lng positions.
         currPosition = arg0;
-        updateLocationCallback.doJob(arg0);
-        getLocationInfo();
+
+        // Request the address for the received position.
+        String reqUrl = "http://maps.google.com/maps/api/geocode/json?latlng="+currPosition.getLongitude()+","+currPosition.getLatitude()+"&sensor=true";
+        httpRequestMan.addRequest(
+                reqUrl,
+                new IHTTPResponse() {
+                    @Override
+                    public void handleHTTPResponse(String response)
+                    {
+                        onAddressResponseReceived(response);
+                    }
+            });
     }
 
-    public void getLocationInfo()
+    /**
+     * Handle the address translation response.
+     *
+     * @param response The response content.
+     */
+    void onAddressResponseReceived(String response)
     {
-        // Instantiate the RequestQueue.
-        RequestQueue queue = Volley.newRequestQueue(ctx);
+        if (response.length() == 0) {
+            Toast.makeText(ctx, R.string.app_name + " - Could not identify the current location. Try again later.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        String url = "http://maps.google.com/maps/api/geocode/json?latlng="+currPosition.getLongitude()+","+currPosition.getLatitude()+"&sensor=true";
-        System.out.println("Request string is: " + url);
+        JSONObject fullResponse = new JSONObject();
+        try {
+            StringBuilder stringBuilder = new StringBuilder();
+            fullResponse = new JSONObject(response);
 
-    // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if (response == null) {
-                            System.out.println("Response is null!");
-                        } else {
-                            System.out.println("Response received! " + response);
-                            // Display the first 500 characters of the response string.
-                        }
+            JSONArray addressComps = fullResponse.getJSONArray("results").getJSONObject(0).getJSONArray("address_components");
 
-                        JSONObject jsonObject = new JSONObject();
-                        try {
-                            StringBuilder stringBuilder = new StringBuilder();
-                            jsonObject = new JSONObject(response);
-                            System.out.println(jsonObject.get("results"));
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                System.out.println("Failed to send request");
-            }
-        });
+            Street = addressComps.getJSONObject(1).getString("short_name");
+            District = addressComps.getJSONObject(2).getString("short_name");
+            City = addressComps.getJSONObject(3).getString("short_name");
+            State = addressComps.getJSONObject(5).getString("short_name");
+            Country = addressComps.getJSONObject(6).getString("short_name");
 
-    // Add the request to the RequestQueue.
-        queue.add(stringRequest);
+            System.out.println(Street + " - " + District + " - " + City + " - " + State + " - " + Country);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        updateLocationCb.doJob(currPosition);
     }
 }
