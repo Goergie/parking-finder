@@ -18,8 +18,12 @@ import org.json.JSONObject;
  */
 public class PositionManager implements LocationListener
 {
+    final String geocodeServiceUrl = "http://maps.google.com/maps/api/geocode/json?latlng=";
     final int minUpdateTimeInMs = 5000;
     final int minUpdateDistanceInMeters = 10;
+    final String mainJsonGeocodeObject = "results";
+    final String mainJsonGeocodeArray = "address_components";
+    final String specificAddressShortnameObject = "short_name";
 
     Context ctx;
     Location currPosition;
@@ -86,7 +90,7 @@ public class PositionManager implements LocationListener
         currPosition = arg0;
 
         // Request the address for the received position.
-        String reqUrl = "http://maps.google.com/maps/api/geocode/json?latlng="+currPosition.getLongitude()+","+currPosition.getLatitude()+"&sensor=true";
+        String reqUrl = geocodeServiceUrl + currPosition.getLongitude() + "," + currPosition.getLatitude() + "&sensor=true";
         httpRequestMan.addRequest(
                 reqUrl,
                 new IHTTPResponse() {
@@ -115,13 +119,13 @@ public class PositionManager implements LocationListener
             StringBuilder stringBuilder = new StringBuilder();
             fullResponse = new JSONObject(response);
 
-            JSONArray addressComps = fullResponse.getJSONArray("results").getJSONObject(0).getJSONArray("address_components");
+            JSONArray addressComps = fullResponse.getJSONArray(mainJsonGeocodeObject).getJSONObject(0).getJSONArray(mainJsonGeocodeArray);
 
-            Street = addressComps.getJSONObject(1).getString("short_name");
-            District = addressComps.getJSONObject(2).getString("short_name");
-            City = addressComps.getJSONObject(3).getString("short_name");
-            State = addressComps.getJSONObject(5).getString("short_name");
-            Country = addressComps.getJSONObject(6).getString("short_name");
+            Street = addressComps.getJSONObject(1).getString(specificAddressShortnameObject);
+            District = addressComps.getJSONObject(2).getString(specificAddressShortnameObject);
+            City = addressComps.getJSONObject(3).getString(specificAddressShortnameObject);
+            State = addressComps.getJSONObject(5).getString(specificAddressShortnameObject);
+            Country = addressComps.getJSONObject(6).getString(specificAddressShortnameObject);
 
             System.out.println(Street + " - " + District + " - " + City + " - " + State + " - " + Country);
 

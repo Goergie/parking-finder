@@ -7,5 +7,5 @@ import android.location.Location;
  */
 public interface IUpdateLocation
 {
-    Location doJob(Location loc);
+    void doJob(Location loc);
 }

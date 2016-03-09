@@ -46,6 +46,7 @@ public class HTTPRequestManager
      */
     public void addRequest(String url, final IHTTPResponse responseCb)
     {
+        System.out.println("New request: " + url);
         // Request a string response from the provided URL.
         StringRequest stringRequest = new StringRequest(
                 url,
